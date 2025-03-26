@@ -1,2 +1,3 @@
-MODELADO CONTINUO
-Ejercicios practicos del laboratorio con python
+#MODELADO CONTINUO
+-
+Ejercicios practicos del laboratorio con python :desktop_computer:
