@@ -97,6 +97,129 @@ for P0 in P0_values:
 plt.tight_layout()
 plt.show()
 
+# Punto C (lo hice independiente a los incisos anteriores)
+
+from scipy.stats import linregress
+
+def euler_method(f, h, t_max, y0):
+    t_values = np.arange(0, t_max + h, h)
+    y_values = np.zeros_like(t_values)
+    y_values[0] = y0
+    
+    for i in range(1, len(t_values)):
+        y_values[i] = y_values[i - 1] + h * f(t_values[i - 1], y_values[i - 1])
+    
+    return t_values, y_values
+
+def extended_euler(f, h, t_max, y0):
+    t_values = np.arange(0, t_max + h, h)
+    y_values = np.zeros_like(t_values)
+    y_values[0] = y0
+    
+    for i in range(1, len(t_values)):
+        t_prev, y_prev = t_values[i - 1], y_values[i - 1]
+        k1 = f(t_prev, y_prev)
+        k2 = f(t_prev + h / 2, y_prev + (h / 2) * k1)
+        y_values[i] = y_prev + h * k2
+    
+    return t_values, y_values
+
+def exact_solution(t, lambda_):
+    return np.exp(lambda_ * t)
+
+def rutina(f, lambda_, t_max, M, y0=1):
+    error1, error2, h_values = [], [], []
+    
+    for m in range(1, M):  # Evitamos m=0 para evitar h demasiado grande
+        h = 2**(-m)
+        h_values.append(h)
+        
+        t1, y1 = euler_method(f, h, t_max, y0)
+        t2, y2 = extended_euler(f, h, t_max, y0)
+        
+        y_exact = exact_solution(t1[-1], lambda_)
+        
+        e1 = abs(y1[-1] - y_exact)
+        e2 = abs(y2[-1] - y_exact)
+
+        error1.append(e1)
+        error2.append(e2)
+    
+    log_h = np.log(h_values)
+    log_e1 = np.log(error1)
+    log_e2 = np.log(error2)
+    
+    # Eliminamos valores extremos para evitar problemas numéricos
+    valid_range = slice(2, -2)  # Ajusta según la estabilidad
+    slope1, _, _, _, _ = linregress(log_h[valid_range], log_e1[valid_range])
+    slope2, _, _, _, _ = linregress(log_h[valid_range], log_e2[valid_range])
+    
+    plt.figure(figsize=(8, 5))
+    plt.plot(log_h, log_e1, 'o-', label=f"Euler (orden ~ {slope1:.2f})")
+    plt.plot(log_h, log_e2, 's-', label=f"Euler modificado (orden ~ {slope2:.2f})")
+    plt.xlabel("log(h)")
+    plt.ylabel("log(error)")
+    plt.title("Orden de convergencia en log-log")
+    plt.legend()
+    plt.grid()
+    plt.show()
+
+# Parámetros
+def f(t, y):
+    return -2 * y  # Lambda = -2
+
+lambda_ = -2
+t_max = 5
+M = 10
+
+rutina(f, lambda_, t_max, M)
+
+#%%
+
+# Ejercicio 3
+
+# Parámetros
+K = 1000
+m = 0.1
+t_max = 50  # años
+
+# Funciones
+def r(t):
+    return 0.2 + 0.2 * np.cos(2 * np.pi * t)
+
+def f(t, y):
+    return r(t) * y * (1 - y / K) - m * y
+
+# Método de Heun propuesto
+def animales_silvestres(h,y0):
+    t_values = np.arange(0,t_max + h, h)
+    y_values = np.zeros_like(t_values)
+    y_values[0] = y0
+    
+    for i in range(1,len(t_values)):
+        
+        y_values[i] = y_values[i-1] + (h/4)*(f(t_values[i-1],y_values[i-1]) + 3*f(t_values[i-1]+ (2/3)*h,y_values[i-1] + (2/3)*h*f(t_values[i-1],y_values[i-1])))
+
+    return y_values, t_values
+
+
+estimacion1 , tiempos= animales_silvestres(1/365, 100)
+estimacion2, _ = animales_silvestres(1/365, 500)
+estimacion3 , _ = animales_silvestres(1/365, 1000)
+
+# Gráfica
+plt.figure(figsize=(10, 6))
+plt.plot(tiempos, estimacion1, label="y₀ = 100")
+plt.plot(tiempos, estimacion2, label="y₀ = 500")
+plt.plot(tiempos, estimacion3, label="y₀ = 1000")
+plt.xlabel("Tiempo (años)")
+plt.ylabel("Población")
+plt.title("Evolución de la población de animales silvestres")
+plt.grid(True)
+plt.legend()
+plt.tight_layout()
+plt.show()
+
 #%%
 
 # Ejercicio 9
@@ -128,7 +251,7 @@ def Hutchinson_euler_sin_delay(r, k, h, t_max, N0 = 0.5):
     N_values[0] = N0
 
     for i in range(1,len(t_values)):
-        N_values[i] = N_values[i-1] + h * r * N_values[i-1] * (1-(N_values[i-1-tau]/k))
+        N_values[i] = N_values[i-1] + h * r * N_values[i-1] * (1-(N_values[i-1]/k))
         
     return t_values , N_values
 
@@ -149,6 +272,15 @@ for tau in tau_values:
 
 plt.tight_layout()
 plt.show()
+
+
+#%%
+
+# Ejercicio 6
+
+
+
+
 
 #%%
 
