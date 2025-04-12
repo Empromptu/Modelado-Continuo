@@ -222,6 +222,99 @@ plt.show()
 
 #%%
 
+# Ejercicio 4
+
+def rungekutta(y0,h,t_max):
+    t_values = np.arange(0, t_max + h, h)
+    n = len(t_values)
+    k = len(y0)
+    y_values = np.zeros((k,n))
+    y_values[:,0] = y0
+
+    for i in range(1,len(t_values)):
+        k1 = f(t_values[i-1], y_values[:,i-1])
+        k2 = f(t_values[i-1] + (1/2)*h,y_values[:,i-1] + (1/2)*h*k1)
+        k3 = f(t_values[i-1] + (1/2)*h,y_values[:,i-1] + (1/2)*h*k2)
+        k4 = f(t_values[i-1] + h,y_values[:,i-1] + h*k3)
+            
+        y_values[:,i]= y_values[:,i-1] + (1/6)*h*(k1 + 2*k2 + 2*k3 + k4)
+        
+    return t_values ,y_values
+
+def f(t, y):  # Lotka-Volterra
+    alpha, beta, delta, gamma = 1.5, 1.0, 1.0, 3.0
+    x, y_ = y
+    dxdt = alpha * x - beta * x * y_
+    dydt = delta * x * y_ - gamma * y_
+    return np.array([dxdt, dydt])
+
+# Condiciones iniciales
+y0 = np.array([10, 5])  # x=10, y=5
+h = 0.01
+t_max = 10
+
+t_vals, Y = rungekutta(y0, h, t_max)
+
+# Graficar resultados
+import matplotlib.pyplot as plt
+
+plt.plot(t_vals, Y[0], label='x (presa)')
+plt.plot(t_vals, Y[1], label='y (depredador)')
+plt.xlabel('Tiempo')
+plt.ylabel('Población')
+plt.title('Modelo de Lotka-Volterra (Runge-Kutta 4)')
+plt.legend()
+plt.grid(True)
+plt.show()
+
+
+#%%
+
+#Ejercicio 6
+
+def Lotka_Volterra(y0,x0,t_max,alpha,beta,gamma,delta,h=0.01):
+    t_values = np.arange(0,t_max+h,h)
+    y_values = np.zeros_like(t_values)
+    x_values = np.zeros_like(t_values)
+    y_values[0] = y0
+    x_values[0] = x0
+    
+    for i in range(1,len(t_values)):
+        
+        x_values[i] = x_values[i-1] + h*(-alpha*x_values[i-1] + gamma*x_values[i-1]*y_values[i-1])
+        y_values[i] = y_values[i-1] + h*(beta*y_values[i-1] -delta*y_values[i-1]*x_values[i-1]) 
+
+    return t_values, y_values, x_values
+
+alpha = 0.25
+beta =1
+gamma =0.01
+delta =0.01
+t_max =50
+x0= 80
+y0= 30
+
+t_values, y_values, x_values = Lotka_Volterra(y0, x0, t_max, alpha, beta, gamma, delta)
+
+plt.plot(t_values, x_values, label = "Depredadores", color = "red")
+plt.plot(t_values, y_values, label = "Presas", color="green")
+plt.xlabel("Tiempo")
+plt.ylabel("Poblacion")
+plt.title("Modelo Depredador-Presa con Euler")
+plt.legend()
+plt.grid()
+plt.show()
+
+plt.figure(figsize=(6, 6))
+plt.plot(x_values, y_values, color='purple')
+plt.xlabel('Depredadores (x)')
+plt.ylabel('Presas (y)')
+plt.title('Diagrama de fases: Presas vs Depredadores')
+plt.grid()
+plt.show()
+
+#%%
+
 # Ejercicio 9
 
 def Hutchinson_euler(r, k, h, t_max, tau, N0 = 0.5):
@@ -276,11 +369,85 @@ plt.show()
 
 #%%
 
-# Ejercicio 6
+# Ejercicio 11
 
+# Constantes físicas
+G = 0.4982  
+mS = 1.9891e30
+mT = 5.97e24
+mL = 7.3477e22
+masses = [mS, mT, mL]
 
+def tres_cuerpos(t_max,h,u0):
+    t_values = np.arange(0,t_max + h, h )    
+    u_values = np.zeros((len(t_values),3,4))
+    u_values[0] = u0
+    
+    for t in range(1,len(t_values)):
+        for i in range(3):
+            xi, yi = u_values[t-1, i, 2] , u_values[t-1, i, 3]
+            vxi ,vyi = u_values[t-1, i, 0] , u_values[t-1, i, 1]
+            
+            # Inicializar aceleración
+            axi, ayi = 0.0, 0.0
 
+            for j in range(3):
+                if j == i : 
+                    continue
+                xj , yj = u_values[t-1, j, 0], u_values[t-1, j, 1]
+                dx , dy = xj - xi, yj - yi
+                dist_sq = dx**2 + dy**2
+                dist_cubed = dist_sq * np.sqrt(dist_sq)
+                axi += G * masses[j] * dx/dist_cubed
+                ayi += G * masses[j] * dy/dist_cubed
+                
+            # Método de Euler
+            new_x = xi + h * vxi
+            new_y = yi + h * vyi
+            new_vx = vxi + h * axi
+            new_vy = vyi + h * ayi
+            
+            u_values[t, i] = [new_x, new_y, new_vx, new_vy]
+            
+    return t_values , u_values
 
+# Posiciones iniciales
+dTS = 1.49597887e11  # m
+dTL = 3.844e8        # m
+
+vT = 2 * np.pi * dTS / 365
+vLT = 2 * np.pi * dTL / 28
+vLS = vT
+
+# Estado inicial: [x, y, vx, vy] para S, T, L
+u0 = np.array([
+    [0,     0,     0,    0],       # Sol
+    [dTS,   0,     0,    vT],      # Tierra
+    [dTS, dTL,  -vLT,    vLS]      # Luna
+])
+
+# Simulación
+t_max = 365      # días
+h = 1            # paso de 1 día
+
+t_vals, u_vals = tres_cuerpos(t_max, h, u0)
+
+xS, yS = u_vals[:, 0, 0], u_vals[:, 0, 1]
+xT, yT = u_vals[:, 1, 0], u_vals[:, 1, 1]
+xL, yL = u_vals[:, 2, 0], u_vals[:, 2, 1]
+
+plt.figure(figsize=(8, 8))
+plt.plot(xS, yS, label='Sol', color='orange')
+plt.plot(xT, yT, label='Tierra', color='blue')
+plt.plot(xL, yL, label='Luna', color='gray')
+plt.scatter(xS[0], yS[0], color='orange', s=50)
+plt.legend()
+plt.axis('equal')
+plt.title("Sistema Sol-Tierra-Luna")
+plt.xlabel("x (m)")
+plt.ylabel("y (m)")
+plt.grid(True)
+plt.show()
 
 #%%
 
