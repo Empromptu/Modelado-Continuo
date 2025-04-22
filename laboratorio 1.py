@@ -2,6 +2,8 @@
 
 import numpy as np
 import matplotlib.pyplot as plt
+from scipy.integrate import solve_ivp
+from scipy.optimize import minimize
 
 #%% 
 
@@ -451,6 +453,65 @@ plt.show()
 
 #%%
 
+# Ejercicio 14
+
+# Paso 1: Definimos el sistema con parámetros verdaderos para simular datos
+def sistema(t,z,alpha,gamma,beta,delta,epsilon):
+    x, y = z
+    dx = -alpha*x + gamma*x*y
+    dy = beta*y - delta*x*y - epsilon*y**2
+    return [dx,dy]
+
+# Parámetros
+true_params = [1,0.2,1.0,0.01,0.02]
+z0 = [40,9]
+t_span = (0,50)
+t_eval = np.linspace(*t_span,100)
+
+sol = solve_ivp(sistema,t_span,z0,args=tuple(true_params),t_eval = t_eval)
+x_data , y_data = sol.y
+t_data = sol.t
+
+# Estimamos derivadas numéricas
+dx_data = np.gradient(x_data, t_data)
+dy_data = np.gradient(y_data, t_data)
+
+# Paso 2: Ajuste de parámetros
+def loss(params):
+    alpha, gamma, beta, delta, epsilon = params
+    dx_model = -alpha*x_data + gamma*x_data * y_data
+    dy_model = beta * y_data - delta * x_data * y_data - epsilon * y_data**2
+    return np.mean((dx_model - dx_data)**2 + (dy_model - dy_data)**2)
+
+# Paso 3: Minimización del error cuadrático
+initial_guess = [1, 0.1, 1.2, 2, 0.01]
+result = minimize(loss, initial_guess, bounds=[(0, 2)]*5)
+fitted_params = result.x
+
+# Resultados
+param_names = ['alpha', 'gamma', 'beta', 'delta', 'epsilon']
+print("\nParámetros ajustados:")
+for name, val, true in zip(param_names, fitted_params, true_params):
+    print(f"{name}: ajustado = {val:.4f} (real = {true})")
+
+# Paso 4: Comparación visual
+sol_fit = solve_ivp(sistema, t_span, z0, args=tuple(fitted_params), t_eval=t_eval)
+
+plt.figure(figsize=(10,5))
+plt.plot(t_eval, x_data, 'r-', label='Presas (simulado)')
+plt.plot(t_eval, y_data, 'b-', label='Depredadores (simulado)')
+plt.plot(t_eval, sol_fit.y[0], 'r--', label='Presas (ajustado)')
+plt.plot(t_eval, sol_fit.y[1], 'b--', label='Depredadores (ajustado)')
+plt.legend()
+plt.title("Ajuste del modelo predador-presa con competencia intraespecífica")
+plt.xlabel("Tiempo")
+plt.ylabel("Población")
+plt.grid()
+plt.tight_layout()
+plt.show()
+
+#%%
+
 # Ejercicio 16
 
 def bouncing_ball(v0,y0,t_max,h):
@@ -495,16 +556,133 @@ plt.grid()
 
 #%%
 
+# Ejercicio 21
+
+def sistema(t,z,u):
+    x , v  =  z
+    dxdt = v
+    dvdt = u * (1-x**2)*v - x
+    return [dxdt, dvdt]
 
 
+# Parámetros
+u_values = [-1,0,1]
+t_span = (0,20)
+t_eval = np.linspace(*t_span,1000)
+z0_values = [[1, 0], [0.5, 0.5], [2, 0]]
 
 
+plt.figure(figsize=(12,8))
+plt.subplot(1, 2, 1)
+
+for z0 in z0_values:
+    for u in u_values:
+        sol = solve_ivp(sistema, t_span, z0, args=(u,), t_eval = t_eval,rtol=1e-6, atol=1e-9)
+        x = sol.y[0]
+        v = sol.y[1]
+        
+        label = f"$u={u}$, $z_0={z0}$"
+        plt.plot(x,v,label=label)
+        
+plt.xlabel("$x$")
+plt.ylabel("$x'$")
+plt.title("Trayectoria en el plano de fases")
+plt.axis('equal')
+plt.grid(True)
+plt.legend()
+
+plt.tight_layout()
+plt.show()
+        
+#%%
+
+# Ejercicio 22
+
+def pendulo(t,z,A,b):
+    theta, v = z
+    dthetadt = v
+    dvdt = -A*np.sin(theta) - b*v
+    return [dthetadt,dvdt]
 
 
+def pendulo_armonico(t,z,A,b):
+    theta, v = z
+    dthetadt = v
+    dvdt = -A*theta - b*v
+    return [dthetadt,dvdt]
+
+# Parámetros
+
+z0 = [1,1]
+A = 5
+b = -1
+t_span =(0,50)
+t_eval = np.linspace(*t_span,1000)
+
+sol = solve_ivp(pendulo,t_span,z0,t_eval = t_eval, args=(A,b))
+sol2 = solve_ivp(pendulo_armonico,t_span,z0,t_eval = t_eval, args=(A,b))
+
+plt.figure(figsize=(12,8))
+
+plt.subplot(1,2,1)
+plt.plot(sol.y[0],sol.y[1],label="Trajectoria no Armonico")
+plt.xlabel("theta")
+plt.ylabel("v")
+
+plt.grid()
+plt.legend()
+
+plt.subplot(1,2,2)
+plt.plot(sol2.y[0],sol2.y[1],label="Trajectoria Armonico")
+plt.xlabel("theta")
+plt.ylabel("v")
+
+plt.grid()
+plt.legend()
+plt.tight_layout()
+plt.show()
+
+#%%
+
+# Ejercicio 23
+
+def Lorentz(t,z0,r):
+    sigma = 10
+    b = 8/3
+    
+    x,y,z = z0
+    dxdt = sigma*(y-x)
+    dydt = r*x - y - x*z
+    dzdt = x*y - b*z
+    
+    return [dxdt,dydt,dzdt]
+
+# Parámetros
+
+r_values = [1/2,1,2,15,25]
+z0 = [1,1,1]
+t_span = (0,50)
+t_eval = np.linspace(*t_span,1000)
 
 
+fig = plt.figure(figsize=(20,10))
 
+for i, r in enumerate(r_values):
+    sol = solve_ivp(Lorentz, t_span, z0, t_eval=t_eval, args=(r,))
+    
+    ax = fig.add_subplot(2, 3, i+1, projection='3d')  # 3D subplot
+    ax.plot(sol.y[0], sol.y[1], sol.y[2], label=f"r = {r}")
+    ax.set_xlabel("x")
+    ax.set_ylabel("y")
+    ax.set_zlabel("z")
+    ax.set_title(f"Diagrama de fases para r = {r}")
+    ax.legend()
 
+plt.tight_layout()
+plt.show()
+    
+    
+    
 
 
 
