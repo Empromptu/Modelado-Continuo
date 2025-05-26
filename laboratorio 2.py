@@ -67,6 +67,26 @@ plt.xlim(0, 1000)  # mostrar solo hasta 1000 Hz para claridad
 plt.grid(True)
 plt.show()
 
+N = len(senal)
+frecuencia_muestreo = 44100  # por ejemplo
+
+frecuencias = np.fft.fftfreq(N, d=1/frecuencia_muestreo)
+transformada = np.fft.fft(senal)
+
+# Centrar ambos
+frecuencias_shift = np.fft.fftshift(frecuencias)
+transformada_shift = np.fft.fftshift(np.abs(transformada))
+
+# Graficar
+plt.plot(frecuencias_shift, transformada_shift)
+plt.title("FFT centrada")
+plt.xlabel("Frecuencia (Hz)")
+plt.ylabel("Magnitud")
+plt.xlim(-1000, 1000)    # Zoom al rango de frecuencias de -1000 Hz a 1000 Hz
+plt.ylim(0, 7000)         # Opcional: Zoom vertical si querés
+plt.grid(True)
+plt.show()
+
 #%%
 
 # Ejercicio 5
@@ -354,7 +374,7 @@ plt.show()
 
 # Ejercicio 14
 
-from scipy.fft import fft, ifft, rfft, fftfreq
+from scipy.fft import fft, ifft, rfft, fftfreq, fftshift, ifftshift
 
 def transformada_fourier_discreta(v):  # DFT
     N = len(v)
@@ -566,6 +586,141 @@ ste es un filtro pasa-bajos (low-pass filter):
 
 Esto se debe a que suaviza la señal, promediando cada punto con sus vecinos.
 """
+#%%
+
+# Ejercicio 24
+
+def derivar_f(f, x_vals):
+    N = len(x_vals)
+    
+    # Transformada de Fourier
+    tf = fft(f)
+    
+    # Vector de frecuencias (en orden no centrado)
+    k = fftfreq(N, d=(x_vals[1] - x_vals[0])) * 2 * np.pi  # Frecuencias angulares
+    
+    # Reordenamos con fftshift
+    tf_shifted = fftshift(tf)
+    k_shifted = fftshift(k)
+    
+    tf_deriv_shifted = 1j * k_shifted * tf_shifted
+    
+    # Deshacemos el shift antes de aplicar la transformada inversa
+    tf_deriv = ifftshift(tf_deriv_shifted)
+    
+    #  Transformada inversa: volvemos al dominio tiempo
+    f_deriv = np.real(ifft(tf_deriv))
+
+    return f_deriv # Devuelve la derivada en el dominio de Fourier
+
+
+def f1(x):
+    return np.sin(x) # x en [0,2π]
+
+N1 = 64
+L1 = 2 * np.pi  
+x1_vals = np.linspace(0, L1, N1, endpoint=False)  
+f1_vals = f1(x1_vals)
+f1_deriv = derivar_f(f1_vals, x1_vals)
+
+def f2(x):
+    return np.cos(x)*(np.exp(-x**2))  # x en [-15,15]
+
+N2 = 1024
+L2 = 30  
+x2_vals = np.linspace(-L2/2, L2/2, N2, endpoint=False)
+f2_vals = f2(x2_vals)
+f2_deriv = derivar_f(f2_vals, x2_vals)
+
+def f3(x):
+    x = np.array(x)
+    return np.where((x >= 0) & (x <= 1), x, 0)
+
+N3 = 1024
+L3 = 1  
+x3_vals = np.linspace(0, L3, N3, endpoint=False) 
+f3_vals = f3(x3_vals)
+f3_deriv = derivar_f(f3_vals, x3_vals)
+
+plt.plot(x3_vals,f3_vals,label=("f3(x)"))
+plt.plot(x3_vals,f3_deriv,label=("f3'(x)"))
+plt.xlabel("x")
+plt.legend()
+plt.grid()
+plt.show()
+
+
+plt.plot(x1_vals,f1_vals,label=("f1(x)"))
+plt.plot(x1_vals,f1_deriv,label=("f1'(x)"))
+plt.xlabel("x")
+plt.legend()
+plt.grid()
+plt.show()
+
+plt.plot(x2_vals,f2_vals,label=("f2(x)"))
+plt.plot(x2_vals,f2_deriv,label=("f2'(x)"))
+plt.xlabel("x")
+plt.legend()
+plt.grid()
+plt.show()
+
+#%%
+
+# Ejercicio 25
+
+def integrar_f(f,x_vals):
+    N = len(x_vals)
+    dx = x_vals[1] - x_vals[0]
+
+    # Transformada de Fourier
+    tf = fft(f)
+
+    # Vector de frecuencias angulares
+    k = fftfreq(N, d=dx) * 2 * np.pi
+
+    # Shift para centrar
+    tf_shifted = fftshift(tf)
+    k_shifted = fftshift(k)
+
+    # Para evitar división por cero en k=0, podemos definir 1/(i*k) = 0 ahí
+    with np.errstate(divide='ignore', invalid='ignore'):
+        integrador = np.zeros_like(k_shifted, dtype=complex)
+        integrador[k_shifted != 0] = 1 / (1j * k_shifted[k_shifted != 0])
+        # En k=0 integrador=0, corresponde a constante de integración
+
+    # Multiplicamos en el dominio de Fourier
+    tf_int_shifted = tf_shifted * integrador
+
+    # Deshacemos el shift
+    tf_int = ifftshift(tf_int_shifted)
+
+    # Transformada inversa: primitiva en el dominio tiempo
+    f_int = np.real(ifft(tf_int))
+    
+    # Ajustar constante de integración para que coincida en x_vals[0]
+    C = primitiva_f(x_vals[0]) - f_int[0]
+    f_int += C
+
+    return f_int
+
+def f(x):
+    return -3*(x**2)*np.exp(-x**3)
+
+def primitiva_f(x):
+    return np.exp(-x**3)
+
+x_vals = np.linspace(-np.pi,np.pi,64)
+mi_primitiva = integrar_f(f(x_vals),x_vals)
+
+plt.plot(x_vals,mi_primitiva,label=("mi f'(x)"))
+plt.plot(x_vals,primitiva_f(x_vals),label=("f'(x)"))
+plt.legend()
+plt.grid()
+plt.show()
+
+
+
+
 
 #%%
 
@@ -596,6 +751,8 @@ plt.xlabel("Frecuencia (Hz)")
 plt.ylabel("Magnitud")
 plt.grid(True)
 plt.show()
+
+
 
 #%%
 
@@ -654,4 +811,33 @@ Un pico en 5 Hz fft → f(t) contiene una onda seno que oscila 5 veces por segun
 
 Un pico en 20 Hz en la fft → f(t) contiene una onda seno que oscila 20 veces por segundo.
 """
+#%%
+
+# Parámetros
+fs = 1000          # frecuencia de muestreo en Hz
+T = 1/fs           # periodo de muestreo
+N = 1024           # número de muestras
+t = np.arange(N) * T  # vector de tiempo
+
+# Señal de ejemplo: una suma de dos senos
+f1 = 50    # frecuencia 1 en Hz
+f2 = 120   # frecuencia 2 en Hz
+x = 0.7*np.sin(2*np.pi*f1*t) + 0.3*np.sin(2*np.pi*f2*t)
+
+# Transformada de Fourier
+X = np.fft.fft(x)
+
+# Frecuencias asociadas
+freqs = np.fft.fftfreq(N, d=T)
+
+# Magnitud de la transformada (normalizada)
+X_mag = np.abs(X) / N
+
+# Graficar la magnitud (solo la mitad positiva)
+plt.plot(freqs[:N//2], X_mag[:N//2])
+plt.xlabel('Frecuencia (Hz)')
+plt.ylabel('Magnitud')
+plt.title('Espectro de frecuencia')
+plt.grid()
+plt.show()
 
