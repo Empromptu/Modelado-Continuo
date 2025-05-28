@@ -719,9 +719,6 @@ plt.grid()
 plt.show()
 
 
-
-
-
 #%%
 
 # GRAFICO DE FFT
@@ -841,3 +838,42 @@ plt.title('Espectro de frecuencia')
 plt.grid()
 plt.show()
 
+#%%
+
+# Teorema de Nyquist-Shannon
+
+def sinc_interp(samples, t, T):
+    """
+    Reconstrucción de la señal usando interpolación sinc
+    :param samples: muestras f(nT)
+    :param t: puntos donde se desea reconstruir la señal
+    :param T: intervalo de muestreo
+    :return: señal reconstruida f(t)
+    """
+    n = np.arange(len(samples))
+    sinc_matrix = np.sinc((t[:, None] - n * T) / T)
+    return np.dot(sinc_matrix, samples)
+
+# Parámetros
+T = 0.1  # intervalo de muestreo
+t_samples = np.arange(0, 2, T)
+f_samples = np.sin(2 * np.pi * t_samples)  # ejemplo: f(t) = sin(2πt)
+
+# Puntos donde reconstruiremos la señal
+t_recon = np.linspace(0, 2, 1000)
+f_recon = sinc_interp(f_samples, t_recon, T)
+
+# Señal original
+f_original = np.sin(2 * np.pi * t_recon)
+
+# Gráfico
+plt.figure(figsize=(10, 5))
+plt.plot(t_recon, f_original, label='Señal original', linestyle='--')
+plt.plot(t_recon, f_recon, label='Señal reconstruida (Shannon)', linewidth=2)
+plt.stem(t_samples, f_samples, linefmt='r-', markerfmt='ro', basefmt='r-', label='Muestras', use_line_collection=True)
+plt.legend()
+plt.grid()
+plt.title("Reconstrucción de la señal usando el Teorema de Shannon")
+plt.xlabel("t")
+plt.ylabel("f(t)")
+plt.show()
